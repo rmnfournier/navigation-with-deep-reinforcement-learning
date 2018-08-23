@@ -17,5 +17,5 @@ By Romain Fournier
  You can play with the parameters in different ways. 
  1. Model.py : you can change the architecture of the network. 
  2. Agent.py : the usual parameters of reinforcement learning are present at the top of the file
- 3. navigation.ipynb : when you load the agent, you can enable Double DQN, Dueling DQN and/or prioritized memory replay
+ 3. navigation.ipynb : when you load the agent, you can enable Double DQN and/or Dueling DQN
  

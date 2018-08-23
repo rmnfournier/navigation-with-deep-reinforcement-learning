@@ -20,7 +20,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class Agent():
     """Interacts with and learns from the environment."""
 
-    def __init__(self, state_size, action_size, seed, double_agent=False,dueling_agent=False,prioritized_memory=False):
+    def __init__(self, state_size, action_size, seed, double_agent=False,dueling_agent=False):
         """Initialize an Agent object.
         
         Params
@@ -30,14 +30,13 @@ class Agent():
             seed (int): random seed
 	    double_agent(bool) : True if we want to use DDQN
             dueling_agent (bool): True if we want to use Dueling
-            prioritized_memory(bool) : True if we want to use prioritized memory
         """
         self.state_size = state_size
         self.action_size = action_size
         self.seed = random.seed(seed)
         self.double_agent=double_agent
         self.dueling_agent=dueling_agent
-        self.prioritized_memory=prioritized_memory
+
         self.qnetwork_local = QNetwork(state_size, action_size, seed,dueling_agent=dueling_agent).to(device)
         self.qnetwork_target = QNetwork(state_size, action_size, seed,dueling_agent=dueling_agent).to(device)
         self.optimizer = optim.RMSprop(self.qnetwork_local.parameters(), lr=LR)
@@ -48,27 +47,15 @@ class Agent():
         self.t_step = 0
     
     def step(self, state, action, reward, next_state, done):
-        # Save experience in replay memory : if we use prioritized memory, we need to compute the delta first
-        if self.prioritized_memory:
-                with torch.no_grad():
-                        state_pyt=torch.from_numpy(np.vstack([state])).float().detach().to(device)
-                        next_state_pyt=torch.from_numpy(np.vstack([next_state])).float().detach().to(device)
-                        reward_pyt=torch.from_numpy(np.vstack([reward])).float().detach().to(device)
-                        done_pyt = torch.from_numpy(np.vstack([done]).astype(np.uint8)).float().detach().to(device)
-                        Q_target=self.get_q_target(next_state_pyt,reward_pyt,GAMMA,done_pyt,1)
-                        action_pyt = torch.from_numpy(np.vstack([action])).long().detach().to(device)
-                        Q_expected = self.qnetwork_local(state_pyt).gather(1, action_pyt)
-                        delta=Q_target-Q_expected
-                        self.memory.add(state, action, reward, next_state, done,delta.detach())
-        else :
-                self.memory.add(state, action, reward, next_state, done)
+        # Save experience in replay memory 
+        self.memory.add(state, action, reward, next_state, done)
         
         # Learn every UPDATE_EVERY time steps.
         self.t_step = (self.t_step + 1) % UPDATE_EVERY
         if self.t_step == 0:
             # If enough samples are available in memory, get random subset and learn
             if len(self.memory) > BATCH_SIZE:
-                experiences = self.memory.sample(self.prioritized_memory)
+                experiences = self.memory.sample()
                 self.learn(experiences, GAMMA)
 
     def act(self, state, eps=0.):
@@ -187,13 +174,9 @@ class ReplayBuffer:
         e = self.experience(state, action, reward, next_state, done,np.abs(delta))
         self.memory.append(e)
     
-    def sample(self,prioritized=False):
+    def sample(self):
         """Randomly sample a batch of experiences from memory."""
-        if prioritized :
-                p= np.array([(e.delta+self.min_prob_value)**self.a for e in self.memory])
-                experiences = random.choices(self.memory, k=self.batch_size,weights=p/np.sum(p))
-        else :
-                experiences = random.sample(self.memory, k=self.batch_size)
+        experiences = random.sample(self.memory, k=self.batch_size)
         states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float().to(device)
         actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).long().to(device)
         rewards = torch.from_numpy(np.vstack([e.reward for e in experiences if e is not None])).float().to(device)
