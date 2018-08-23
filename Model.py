@@ -1,3 +1,4 @@
+## Modified from template provided by udacity
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
