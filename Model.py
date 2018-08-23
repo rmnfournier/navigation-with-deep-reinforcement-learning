@@ -18,14 +18,16 @@ class QNetwork(nn.Module):
         self.seed = torch.manual_seed(seed)
         self.fc1= nn.Linear(state_size, fc1_units)
         self.fc2=nn.Linear(fc1_units,fc2_units)
+
         self.advantage=nn.Linear(fc2_units,action_size)
         self.state_value=nn.Linear(fc2_units,1)
+        self.dueling_agent=dueling_agent
 
     def forward(self, state):
         """Build a network that maps state -> action values."""
         x=F.relu(self.fc1(state))
         x=F.relu(self.fc2(x))
-        if dueling_agent:
+        if self.dueling_agent:
                 advantage=self.advantage(x)
                 value=self.state_value(x)
                 return advantage+value 
